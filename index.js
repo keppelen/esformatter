@@ -34,6 +34,7 @@ var DEFAULT_OPTS = {
         value : '    ', // 4 spaces
         FunctionDeclaration : true,
         ObjectExpression : true,
+        IfStatement : true,
         VariableDeclarator : false
     },
 
@@ -50,6 +51,13 @@ var DEFAULT_OPTS = {
             FunctionDeclaration : true,
             FunctionDeclarationClosingBrace : true,
             FunctionDeclarationOpeningBrace : false,
+            IfOpeningBrace : false,
+            IfClosingBrace : true,
+            ElseOpeningBrace : false,
+            ElseClosingBrace : true,
+            ElseIfOpeningBrace : false,
+            ElseIfClosingBrace : true,
+            IfStatement : true,
             ObjectExpressionClosingBrace : true,
             Property : true,
             ReturnStatement : true,
@@ -66,6 +74,13 @@ var DEFAULT_OPTS = {
             FunctionDeclaration : false,
             FunctionDeclarationClosingBrace : true,
             FunctionDeclarationOpeningBrace : true,
+            IfOpeningBrace : true,
+            IfClosingBrace : true,
+            ElseOpeningBrace : true,
+            ElseClosingBrace : true,
+            ElseIfOpeningBrace : true,
+            ElseIfClosingBrace : true,
+            IfStatement : true,
             ObjectExpressionOpeningBrace : true,
             Property : false,
             ReturnStatement : true
@@ -84,6 +99,13 @@ var DEFAULT_OPTS = {
             BinaryExpressionOperator : true,
             FunctionDeclarationClosingBrace : true,
             FunctionDeclarationOpeningBrace : true,
+            IfOpeningBrace : true,
+            IfClosingBrace : false,
+            ElseOpeningBrace : true,
+            ElseClosingBrace : false,
+            ElseIfOpeningBrace : true,
+            ElseIfClosingBrace : false,
+            IfTest : true,
             LineComment : true,
             PropertyValue : true,
             ParameterComma : false,
@@ -97,6 +119,13 @@ var DEFAULT_OPTS = {
             AssignmentOperator : true,
             BinaryExpressionOperator : true,
             FunctionName : false,
+            IfOpeningBrace : false,
+            IfClosingBrace : true,
+            ElseOpeningBrace : false,
+            ElseClosingBrace : false,
+            ElseIfOpeningBrace : false,
+            ElseIfClosingBrace : false,
+            IfTest : true,
             PropertyName : true,
             ParameterComma : true,
             ParameterList : false,
@@ -112,12 +141,14 @@ var DEFAULT_OPTS = {
 var BYPASS_INDENT = {
     BlockStatement : true, // child nodes already add indent
     Identifier : true,
-    Literal : true
+    Literal : true,
+    LogicalExpression : true
 };
 
 
 // some child nodes are already responsible for indentation
 var BYPASS_CHILD_INDENT = {
+    IfStatement : true,
     CallExpression : true,
     ExpressionStatement : true,
     Property : true,
@@ -378,6 +409,50 @@ HOOKS.AssignmentExpression = function(node){
             brAfterIfNeeded(node.endToken, 'AssignmentExpression');
         }
     }
+};
+
+
+HOOKS.IfStatement = function(node){
+    // console.log('CONSEQUENT: ', node.consequent.startToken.value, node.consequent.endToken.value)
+    wsAroundIfNeeded(node.consequent.startToken, 'IfOpeningBrace');
+    brAroundIfNeeded(node.consequent.startToken, 'IfOpeningBrace');
+
+    brAroundIfNeeded(node.consequent.endToken, 'IfClosingBrace');
+
+    // removeAdjacentBefore(node.test.startToken, 'LineBreak');
+    // removeAdjacentAfter(node.test.endToken, 'LineBreak');
+
+
+    wsBeforeIfNeeded(node.test.startToken.prev, 'IfTest');
+    wsAfterIfNeeded(node.test.startToken.next, 'IfTest');
+
+    var alt = node.alternate;
+    if (alt) {
+        // we remove spaces and line breaks before since it's easier
+        var prevToken = node.consequent.endToken.next;
+        while ( prevToken.type === 'LineBreak' || prevToken.type === 'WhiteSpace') {
+            prevToken.remove();
+            prevToken = prevToken.next;
+        }
+
+        if (alt.startToken.value === 'if') { // else if
+            console.log('else if: ', [alt.startToken.prev.value])
+        } else {
+            wsAroundIfNeeded(alt.startToken, 'ElseOpeningBrace');
+            brAroundIfNeeded(alt.startToken, 'ElseOpeningBrace');
+        }
+        wsAroundIfNeeded(alt.endToken, 'ElseClosingBrace');
+        brAroundIfNeeded(alt.endToken, 'ElseClosingBrace');
+
+        // console.log([alt.startToken.value, alt.endToken.value])
+    }
+
+    // if (node.indentLevel) {
+        // wsBefore(node.consequent.endToken, getIndent(node.indentLevel));
+    // }
+
+    // need to be afterward since alternate remove some white spaces a br
+    wsAroundIfNeeded(node.consequent.endToken, 'IfClosingBrace');
 };
 
 
